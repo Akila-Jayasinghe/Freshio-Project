@@ -1,6 +1,5 @@
 # --- 1. Block the Heavy Data Folder ---
 acq_data_set/
-/acq_data_set
 
 # --- 2. Block Secrets (Wherever they are) ---
 .env
@@ -14,5 +13,17 @@ __pycache__/
 Thumbs.db
 .vscode/
 
-# --- 4. Block Large Model Files (Optional) ---
-*.tflite
+# --- 4. Block Large Model Files (UPDATED: Commented out so we CAN commit Freshio_model_v01.tflite) ---
+# *.tflite 
+
+# --- 5. Block Flutter/Dart Auto-Generated Junk (NEW) ---
+**/build/
+**/.dart_tool/
+**/.pub-cache/
+**/.pub/
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.podspec
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java

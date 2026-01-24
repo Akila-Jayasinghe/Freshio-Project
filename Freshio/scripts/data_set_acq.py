@@ -21,7 +21,7 @@ def wait_for_connection(dataset_id):
             print(".", end="", flush=True)
 
 
-# Load your credentials from .env
+# Load credentials from .env
 load_dotenv()
 
 remote_data = [
