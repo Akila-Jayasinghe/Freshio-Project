@@ -37,11 +37,28 @@ class MLService {
     img.Image? originalImage = img.decodeImage(file.readAsBytesSync());
     if (originalImage == null) return null;
 
-    img.Image resizedImage = img.copyResize(
+    int cropSize = originalImage.width < originalImage.height
+        ? originalImage.width
+        : originalImage.height;
+
+    int offsetX = (originalImage.width - cropSize) ~/ 2;
+    int offsetY = (originalImage.height - cropSize) ~/ 2;
+
+    img.Image croppedImage = img.copyCrop(
       originalImage,
+      x: offsetX,
+      y: offsetY,
+      width: cropSize,
+      height: cropSize,
+    );
+
+    // Now resize the cropped square to 224x224 for the AI
+    img.Image resizedImage = img.copyResize(
+      croppedImage,
       width: 224,
       height: 224,
     );
+
     var input = _imageToByteList(resizedImage).reshape([1, 224, 224, 3]);
 
     // Updated output size to 6 to match your labels
@@ -61,6 +78,11 @@ class MLService {
         maxConfidence = probabilities[i];
         maxIndex = i;
       }
+    }
+
+    // If confidence is too low, tell the user to try again
+    if (maxConfidence < 0.60) {
+      return "Not sure! Move closer 🔍";
     }
 
     // Format the final result string

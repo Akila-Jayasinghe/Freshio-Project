@@ -1,6 +1,7 @@
+import 'dart:ui'; // Needed for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'main.dart';
+import 'main.dart'; // access the 'cameras' global variable
 import 'ml_service.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -23,11 +24,9 @@ class _CameraScreenState extends State<CameraScreen> {
     _mlService.loadModel();
   }
 
-  // Set up the camera controller
   Future<void> _initializeCamera() async {
     if (cameras.isEmpty) return;
-
-    // Select the first camera (Default-back camera)
+    // Use a higher resolution for a clearer preview
     _controller = CameraController(
       cameras[0],
       ResolutionPreset.high,
@@ -44,14 +43,12 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  // Dispose of the controller when the screen is closed
   @override
   void dispose() {
     _controller?.dispose();
     super.dispose();
   }
 
-  // Function to capture the image
   Future<void> _captureImage() async {
     if (!_controller!.value.isInitialized) return;
 
@@ -72,159 +69,8 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!_isCameraInitialized) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator(color: Colors.green)),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text(
-          'Freshio Scanner',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: Colors.black,
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: [
-          // 1. Full Screen Camera
-          SizedBox.expand(child: CameraPreview(_controller!)),
-
-          // 2. Dark Overlay with Transparent Center (Scanner Guide)
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.5),
-              BlendMode.srcOut,
-            ),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.black,
-                    backgroundBlendMode: BlendMode.dstOut,
-                  ),
-                ),
-                Center(
-                  child: Container(
-                    width: 280,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      color: Colors
-                          .red, // This becomes transparent due to BlendMode
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 3. Scanner Border & Instructions
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.greenAccent, width: 4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    "Center the fruit inside the box",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 4. Loading State OR Big Capture Button
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: _isLoading
-                  ? Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Colors.green),
-                          SizedBox(width: 15),
-                          Text(
-                            "Inspecting... 🍎",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: _captureImage,
-                      child: Container(
-                        height: 80,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.5),
-                              blurRadius: 15,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showResultDialog(String result) {
     bool isFresh = result.toLowerCase().contains("fresh");
-
-    // UI mapping for kids and adults
     String emoji = isFresh ? "😊" : "😟";
     String titleText = isFresh ? "Yay! It's Fresh!" : "Uh oh! It's Rotten!";
     Color themeColor = isFresh ? Colors.green : Colors.orangeAccent;
@@ -233,52 +79,66 @@ class _CameraScreenState extends State<CameraScreen> {
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 60)),
-              const SizedBox(height: 10),
+              Text(emoji, style: const TextStyle(fontSize: 64)),
+              const SizedBox(height: 16),
               Text(
                 titleText,
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                   color: themeColor,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const Divider(height: 30),
-              const Text(
-                'AI Scanner says:',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                result, // e.g., "Fresh Banana (85%)"
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
                 ),
-                textAlign: TextAlign.center,
+                decoration: BoxDecoration(
+                  color: themeColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  result,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: themeColor.withOpacity(0.9),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              const SizedBox(height: 25),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 54,
                 child: ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                   label: const Text(
                     'Scan Another',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeColor,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 4,
+                    shadowColor: themeColor.withOpacity(0.4),
                   ),
                 ),
               ),
@@ -288,4 +148,279 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isCameraInitialized) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.greenAccent),
+        ),
+      );
+    }
+
+    // Define a fixed size for the scanner area to ensure alignment
+    final double scanAreaSize = MediaQuery.of(context).size.width * 0.75;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true, // Allows camera to show behind the app bar
+      appBar: AppBar(
+        title: const Text(
+          'Freshio Scanner',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 1.1,
+          ),
+        ),
+        backgroundColor:
+            Colors.transparent, // Transparent app bar for a modern look
+        centerTitle: true,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Stack(
+        children: [
+          // 1. Full Screen Camera Preview
+          SizedBox.expand(child: CameraPreview(_controller!)),
+
+          // 2. Dark Overlay with Transparent Center (Fixed Alignment)
+          ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.6),
+              BlendMode.srcOut,
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    backgroundBlendMode: BlendMode.dstOut,
+                  ),
+                ),
+                Center(
+                  child: Container(
+                    width: scanAreaSize,
+                    height: scanAreaSize,
+                    decoration: BoxDecoration(
+                      color: Colors
+                          .white, // This color is punched out to be transparent
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 3. Modern Scanner Corner Borders
+          Center(
+            child: SizedBox(
+              width: scanAreaSize,
+              height: scanAreaSize,
+              child: CustomPaint(
+                painter: ScannerCornerPainter(
+                  color: Colors.greenAccent,
+                  strokeWidth: 5.0,
+                ),
+              ),
+            ),
+          ),
+
+          // 4. Instructions Chip with Glassmorphism effect
+          Positioned(
+            top:
+                MediaQuery.of(context).size.height *
+                0.62, // Position below the scanner
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    color: Colors.black.withOpacity(0.4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.center_focus_strong_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Center fruit inside corners",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 5. Modern Capture Button & Loading State
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _isLoading
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.greenAccent,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Text(
+                            "Analyzing... 🍎",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: _captureImage,
+                      child: Container(
+                        height: 84,
+                        width: 84,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Colors.greenAccent, Colors.green],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.greenAccent.withOpacity(0.4),
+                              blurRadius: 16,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Custom painter for the modern corner borders
+class ScannerCornerPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double cornerLength;
+
+  ScannerCornerPainter({
+    required this.color,
+    required this.strokeWidth,
+    this.cornerLength = 30.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Top Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, cornerLength)
+        ..lineTo(0, 0)
+        ..lineTo(cornerLength, 0),
+      paint,
+    );
+
+    // Top Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, cornerLength),
+      paint,
+    );
+
+    // Bottom Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width, size.height - cornerLength)
+        ..lineTo(size.width, size.height)
+        ..lineTo(size.width - cornerLength, size.height),
+      paint,
+    );
+
+    // Bottom Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(cornerLength, size.height)
+        ..lineTo(0, size.height)
+        ..lineTo(0, size.height - cornerLength),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
