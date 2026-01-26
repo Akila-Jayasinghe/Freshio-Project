@@ -66,7 +66,7 @@ Freshio-Project/
 
 1. **Clone the Repository:**
 ```bash
-git clone [https://github.com/Akila-Jayasinghe/Freshio-Project.git](https://github.com/Akila-Jayasinghe/Freshio-Project.git)
+git clone https://github.com/Akila-Jayasinghe/Freshio-Project.git
 
 ```
 
