@@ -13,16 +13,18 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # --- FRESHIO ML & CAMERA DEPENDENCIES ---
-  # Library to run the AI Model
+  # To run the AI Model
   tflite_flutter: ^0.12.1
 
-  # Library to pick existing photos from the Gallery
+  # To pick existing photos from the Gallery
   image_picker: ^1.0.7
+
   # Image manipulation library
   image: ^4.7.2
   
   # To use the device camera for real-time inspection
   camera: ^0.10.5+9 
+
   # For requesting camera permissions from the user
   permission_handler: ^11.3.0 
 
@@ -36,7 +38,6 @@ flutter:
   uses-material-design: true
 
   # --- ASSETS CONFIGURATION ---
-  # This tells the app to bundle your model files
   assets:
     - assets/model/Freshio_model_v02.tflite
     - assets/model/labels.txt

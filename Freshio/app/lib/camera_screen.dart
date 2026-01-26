@@ -1,4 +1,4 @@
-import 'dart:ui'; // Needed for ImageFilter
+import 'dart:ui'; // for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'main.dart'; // access the 'cameras' global variable
@@ -26,6 +26,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _initializeCamera() async {
     if (cameras.isEmpty) return;
+
     // Use a higher resolution for a clearer preview
     _controller = CameraController(
       cameras[0],
@@ -35,7 +36,9 @@ class _CameraScreenState extends State<CameraScreen> {
 
     try {
       await _controller!.initialize();
+
       if (!mounted) return; // Safety check
+
       setState(() {
         _isCameraInitialized = true;
       });
@@ -47,7 +50,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _controller?.dispose();
-    _mlService.dispose(); // ✅ Bug 2 Fixed: TFLite model is properly disposed
+    _mlService.dispose(); // TFLite model is properly disposed
     super.dispose();
   }
 
@@ -60,7 +63,7 @@ class _CameraScreenState extends State<CameraScreen> {
       XFile imageFile = await _controller!.takePicture();
       String? result = await _mlService.inspectFruit(imageFile);
 
-      // ✅ FIX: Check if widget is still on screen before calling setState
+      // Check if widget is still on screen before calling setState
       if (!mounted) return;
 
       setState(() => _isLoading = false);
@@ -69,8 +72,9 @@ class _CameraScreenState extends State<CameraScreen> {
         _showResultDialog(result);
       }
     } catch (e) {
-      // ✅ FIX: Check mounted here as well
+      // Check mounted here as well
       if (!mounted) return;
+
       setState(() => _isLoading = false);
       print("Error: $e");
     }
@@ -167,7 +171,7 @@ class _CameraScreenState extends State<CameraScreen> {
       );
     }
 
-    // Define a fixed size for the scanner area to ensure alignment
+    // Define fixed size for the scanner area to ensure alignment
     final double scanAreaSize = MediaQuery.of(context).size.width * 0.75;
 
     return Scaffold(
@@ -195,10 +199,10 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
       body: Stack(
         children: [
-          // 1. Full Screen Camera Preview
+          // Full Screen Camera Preview
           SizedBox.expand(child: CameraPreview(_controller!)),
 
-          // 2. Dark Overlay with Transparent Center (Fixed Alignment)
+          // Dark Overlay with Transparent Center
           ColorFiltered(
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.6),
@@ -218,7 +222,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     width: scanAreaSize,
                     height: scanAreaSize,
                     decoration: BoxDecoration(
-                      color: Colors.white, // Punched out to be transparent
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
@@ -227,7 +231,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // 3. Modern Scanner Corner Borders
+          // Scanner Corner Borders
           Center(
             child: SizedBox(
               width: scanAreaSize,
@@ -241,10 +245,9 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // 4. Instructions Chip with Glassmorphism effect
+          // Instructions Chip with Glassmorphism effect
           Positioned(
-            bottom:
-                150, // ✅ Moved lower, perfectly positioned above the capture button
+            bottom: 150, // vertical position
             left: 0,
             right: 0,
             child: Center(
@@ -283,7 +286,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // 5. Modern Capture Button & Loading State
+          // Capture Button & Loading State
           Positioned(
             bottom: 40,
             left: 0,
@@ -368,7 +371,7 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 }
 
-// Custom painter for the modern corner borders
+// Painter for the modern corner borders
 class ScannerCornerPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
@@ -388,7 +391,7 @@ class ScannerCornerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // Top Left
+    // To-Left
     canvas.drawPath(
       Path()
         ..moveTo(0, cornerLength)
@@ -397,7 +400,7 @@ class ScannerCornerPainter extends CustomPainter {
       paint,
     );
 
-    // Top Right
+    // Top-Right
     canvas.drawPath(
       Path()
         ..moveTo(size.width - cornerLength, 0)
@@ -406,7 +409,7 @@ class ScannerCornerPainter extends CustomPainter {
       paint,
     );
 
-    // Bottom Right
+    // Bottom-Right
     canvas.drawPath(
       Path()
         ..moveTo(size.width, size.height - cornerLength)
@@ -415,7 +418,7 @@ class ScannerCornerPainter extends CustomPainter {
       paint,
     );
 
-    // Bottom Left
+    // Bottom-Left
     canvas.drawPath(
       Path()
         ..moveTo(cornerLength, size.height)

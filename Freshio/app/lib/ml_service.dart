@@ -17,7 +17,7 @@ class MLService {
 
   Interpreter? _interpreter;
 
-  // 1. Load specific Freshio Model
+  // Load specific Freshio Model
   Future<void> loadModel() async {
     try {
       _interpreter = await Interpreter.fromAsset(
@@ -29,7 +29,7 @@ class MLService {
     }
   }
 
-  // 2. Run the image through the model
+  // Inject image through the model
   Future<String?> inspectFruit(XFile imageFile) async {
     if (_interpreter == null) return null;
 
@@ -52,7 +52,7 @@ class MLService {
       height: cropSize,
     );
 
-    // Now resize the cropped square to 224x224 for the AI
+    // Resize the cropped square to 224x224 for model req.
     img.Image resizedImage = img.copyResize(
       croppedImage,
       width: 224,
@@ -61,16 +61,16 @@ class MLService {
 
     var input = _imageToByteList(resizedImage).reshape([1, 224, 224, 3]);
 
-    // Updated output size to 6 to match your labels
+    // List with label count
     var output = List.filled(1 * 6, 0.0).reshape([1, 6]);
 
-    // Run AI inference
+    // Run model inference
     _interpreter!.run(input, output);
 
-    // Get the results list
+    // Get results into list
     List<double> probabilities = output[0] as List<double>;
 
-    // Find the highest probability and its index
+    // Find the highest prob. and its index
     double maxConfidence = 0;
     int maxIndex = 0;
     for (int i = 0; i < probabilities.length; i++) {
@@ -80,7 +80,7 @@ class MLService {
       }
     }
 
-    // If confidence is too low, tell the user to try again
+    // If confidence is too low, then tell to try again
     if (maxConfidence < 0.60) {
       return "Not sure! Move closer 🔍";
     }
@@ -108,6 +108,7 @@ class MLService {
     return convertedBytes;
   }
 
+  // Program kill method
   void dispose() {
     _interpreter?.close();
   }
