@@ -13,7 +13,7 @@
 The primary goal of Freshio is to provide a seamless, AI-driven interface for fruit and vegetable inspection, as illustrated in our conceptual design:
 
 <p align="center">
-  <img src="Doc%20res/img_0001.png" width="600" alt="Freshio Conceptual Design">
+  <img src="Doc%20res/img_0001.jpg" width="600" alt="Freshio Conceptual Design">
   <br>
   <i>Figure 1: Conceptual UI/UX Design for the Freshio Scanner</i>
 </p>
@@ -31,7 +31,7 @@ The primary goal of Freshio is to provide a seamless, AI-driven interface for fr
 As shown in our research phase (**Figure 2**), manual fruit inspection is often unhygienic and highly subjective. Consumers frequently struggle to identify internal rot from external surface patterns.
 
 <p align="center">
-  <img src="Doc%20res/img_0002.png" width="500" alt="Problem Analysis">
+  <img src="Doc%20res/img_0002.jpg" width="500" alt="Problem Analysis">
   <br>
   <i>Figure 2: Analysis of manual produce inspection challenges</i>
 </p>
@@ -103,3 +103,6 @@ flutter run --release
 * **V. P. A. Jayasinghe**
 
 ---
+
+Developed as a project in Digital Image Processing at the Faculty of Computing,
+<br>General Sir John Kotelawala Defence University.
