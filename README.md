@@ -42,7 +42,7 @@ The system follows a sophisticated pipeline from data acquisition to mobile depl
 <p align="center">
   <img src="Doc%20res/img_0003.png" width="800" alt="System Architecture">
   <br>
-  <i>Figure 3: Freshio High-Level System Architecture</i>
+  <i>Figure 3: Freshio High-Level Architecture</i>
 </p>
 
 ---
