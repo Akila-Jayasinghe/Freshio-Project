@@ -21,7 +21,7 @@ class MLService {
   Future<void> loadModel() async {
     try {
       _interpreter = await Interpreter.fromAsset(
-        'assets/model/Freshio_model_v01.tflite',
+        'assets/model/Freshio_model_v02.tflite',
       );
       print('✅ Freshio model loaded successfully!');
     } catch (e) {
@@ -106,5 +106,9 @@ class MLService {
       }
     }
     return convertedBytes;
+  }
+
+  void dispose() {
+    _interpreter?.close();
   }
 }

@@ -35,6 +35,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     try {
       await _controller!.initialize();
+      if (!mounted) return; // Safety check
       setState(() {
         _isCameraInitialized = true;
       });
@@ -46,6 +47,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _controller?.dispose();
+    _mlService.dispose(); // ✅ Bug 2 Fixed: TFLite model is properly disposed
     super.dispose();
   }
 
@@ -58,12 +60,17 @@ class _CameraScreenState extends State<CameraScreen> {
       XFile imageFile = await _controller!.takePicture();
       String? result = await _mlService.inspectFruit(imageFile);
 
+      // ✅ FIX: Check if widget is still on screen before calling setState
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
 
-      if (result != null && mounted) {
+      if (result != null) {
         _showResultDialog(result);
       }
     } catch (e) {
+      // ✅ FIX: Check mounted here as well
+      if (!mounted) return;
       setState(() => _isLoading = false);
       print("Error: $e");
     }
@@ -165,7 +172,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true, // Allows camera to show behind the app bar
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
           'Freshio Scanner',
@@ -175,8 +182,7 @@ class _CameraScreenState extends State<CameraScreen> {
             letterSpacing: 1.1,
           ),
         ),
-        backgroundColor:
-            Colors.transparent, // Transparent app bar for a modern look
+        backgroundColor: Colors.transparent,
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
@@ -212,8 +218,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     width: scanAreaSize,
                     height: scanAreaSize,
                     decoration: BoxDecoration(
-                      color: Colors
-                          .white, // This color is punched out to be transparent
+                      color: Colors.white, // Punched out to be transparent
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
@@ -238,9 +243,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
           // 4. Instructions Chip with Glassmorphism effect
           Positioned(
-            top:
-                MediaQuery.of(context).size.height *
-                0.62, // Position below the scanner
+            bottom:
+                150, // ✅ Moved lower, perfectly positioned above the capture button
             left: 0,
             right: 0,
             child: Center(
@@ -254,9 +258,9 @@ class _CameraScreenState extends State<CameraScreen> {
                       vertical: 10,
                     ),
                     color: Colors.black.withOpacity(0.4),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Icon(
                           Icons.center_focus_strong_rounded,
                           color: Colors.white,
@@ -294,11 +298,11 @@ class _CameraScreenState extends State<CameraScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
                             color: Colors.black26,
                             blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
