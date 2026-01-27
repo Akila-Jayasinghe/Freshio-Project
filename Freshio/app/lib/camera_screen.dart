@@ -1,8 +1,13 @@
-import 'dart:ui'; // for ImageFilter
+import 'dart:async'; // For StreamSubscription
+import 'dart:io'; // File handling
+import 'dart:ui'; // ImageFilter
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'main.dart'; // access the 'cameras' global variable
+import 'package:connectivity_plus/connectivity_plus.dart'; // Network monitoring
+import 'main.dart'; // Access the 'cameras' global variable
 import 'ml_service.dart';
+import 'services/sync_service.dart'; // The Sync Service
+import 'widgets/feedback_sheet.dart'; // Feedback widget
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -17,17 +22,119 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isLoading = false;
   final MLService _mlService = MLService();
 
+  // --- Sync Variables ---
+  bool _isSyncing = false;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
   @override
   void initState() {
     super.initState();
     _initializeCamera();
     _mlService.loadModel();
+
+    // Auto-Sync Listener: If internet connects, run the full sync automatically
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      // Check if any of the results indicate a connection (mobile or wifi)
+      bool isConnected = results.any(
+        (result) =>
+            result == ConnectivityResult.mobile ||
+            result == ConnectivityResult.wifi,
+      );
+
+      if (isConnected) {
+        _performFullSync(
+          silent: true,
+        ); // 'silent' means don't show big popups, just do it
+      }
+    });
+  }
+
+  // The Unified Sync Logic (Upload Data + Check for Updates)
+  Future<void> _performFullSync({bool silent = false}) async {
+    if (_isSyncing) return; // Don't run twice
+
+    setState(() => _isSyncing = true);
+
+    // Only show "Starting..." snackbar if manually triggered
+    if (!silent && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Checking for updates & uploading data..."),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+
+    try {
+      // Run the Bi-Directional Sync Service
+      String resultMessage = await SyncService().runFullSync();
+
+      if (mounted) {
+        // Always show the final result so user knows the app is active/smart
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(resultMessage),
+            backgroundColor: Colors.green[700],
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Sync failed: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  // Manual Trigger Button Logic
+  Future<void> _manualSyncTrigger() async {
+    // Check current connection status
+    var connectivityResult = await (Connectivity().checkConnectivity());
+
+    // Check if connected (support for new list-based return type)
+    bool isConnected = connectivityResult.any(
+      (result) =>
+          result == ConnectivityResult.mobile ||
+          result == ConnectivityResult.wifi,
+    );
+
+    if (!isConnected) {
+      // Offline? Ask user to connect.
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("No Internet Connection"),
+          content: const Text(
+            "To sync data and check for new AI models, please turn on WiFi or Mobile Data.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Online? Run the sync visibly.
+      _performFullSync(silent: false);
+    }
   }
 
   Future<void> _initializeCamera() async {
     if (cameras.isEmpty) return;
 
-    // Use a higher resolution for a clearer preview
+    // Use high res for a clear preview
     _controller = CameraController(
       cameras[0],
       ResolutionPreset.high,
@@ -37,20 +144,21 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       await _controller!.initialize();
 
-      if (!mounted) return; // Safety check
+      if (!mounted) return;
 
       setState(() {
         _isCameraInitialized = true;
       });
     } catch (e) {
-      print("Camera initialization error: $e");
+      debugPrint("Camera initialization error: $e");
     }
   }
 
   @override
   void dispose() {
     _controller?.dispose();
-    _mlService.dispose(); // TFLite model is properly disposed
+    _mlService.dispose();
+    _connectivitySubscription?.cancel();
     super.dispose();
   }
 
@@ -63,31 +171,58 @@ class _CameraScreenState extends State<CameraScreen> {
       XFile imageFile = await _controller!.takePicture();
       String? result = await _mlService.inspectFruit(imageFile);
 
-      // Check if widget is still on screen before calling setState
       if (!mounted) return;
-
       setState(() => _isLoading = false);
 
       if (result != null) {
-        _showResultDialog(result);
+        File fileImage = File(imageFile.path);
+        _showResultDialog(result, fileImage);
       }
     } catch (e) {
-      // Check mounted here as well
       if (!mounted) return;
-
       setState(() => _isLoading = false);
-      print("Error: $e");
+      debugPrint("Error: $e");
     }
   }
 
-  void _showResultDialog(String result) {
+  void _showResultDialog(String result, File imageFile) {
     bool isFresh = result.toLowerCase().contains("fresh");
-    String emoji = isFresh ? "😊" : "😟";
-    String titleText = isFresh ? "Yay! It's Fresh!" : "Uh oh! It's Rotten!";
-    Color themeColor = isFresh ? Colors.green : Colors.orangeAccent;
+    bool isUnsure =
+        result.toLowerCase().contains("unsure") ||
+        result.toLowerCase().contains("move closer") ||
+        result.toLowerCase().contains("unknown");
+
+    String emoji, titleText;
+    Color themeColor;
+
+    if (isUnsure) {
+      emoji = "🤔";
+      titleText = "Not Sure...";
+      themeColor = Colors.grey;
+    } else if (isFresh) {
+      emoji = "😊";
+      titleText = "Yay! It's Fresh!";
+      themeColor = Colors.green;
+    } else {
+      emoji = "😟";
+      titleText = "Uh oh! It's Rotten!";
+      themeColor = Colors.orangeAccent;
+    }
+
+    double confidence = 0.0;
+    try {
+      final RegExp regex = RegExp(r'(\d+)%');
+      final match = regex.firstMatch(result);
+      if (match != null) {
+        confidence = int.parse(match.group(1)!) / 100.0;
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         backgroundColor: Colors.white,
@@ -128,11 +263,15 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Scan Another Button
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                   icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                   label: const Text(
                     'Scan Another',
@@ -150,6 +289,33 @@ class _CameraScreenState extends State<CameraScreen> {
                     ),
                     elevation: 4,
                     shadowColor: themeColor.withOpacity(0.4),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Report Issue Button
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => FeedbackSheet(
+                      imageFile: imageFile,
+                      aiResult: result,
+                      confidence: confidence,
+                    ),
+                  );
+                },
+                child: Text(
+                  "Wrong prediction? Report it.",
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
                   ),
                 ),
               ),
@@ -171,7 +337,6 @@ class _CameraScreenState extends State<CameraScreen> {
       );
     }
 
-    // Define fixed size for the scanner area to ensure alignment
     final double scanAreaSize = MediaQuery.of(context).size.width * 0.75;
 
     return Scaffold(
@@ -196,6 +361,36 @@ class _CameraScreenState extends State<CameraScreen> {
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          // --- THE PERMANENT SYNC BUTTON ---
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: _isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: _manualSyncTrigger,
+                    icon: const Icon(Icons.sync, size: 16),
+                    label: const Text("Sync"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 0,
+                      ),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -223,7 +418,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     height: scanAreaSize,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
                 ),
@@ -245,9 +440,9 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // Instructions Chip with Glassmorphism effect
+          // Instructions Chip
           Positioned(
-            bottom: 150, // vertical position
+            bottom: 150,
             left: 0,
             right: 0,
             child: Center(
@@ -286,7 +481,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // Capture Button & Loading State
+          // Capture Button
           Positioned(
             bottom: 40,
             left: 0,
@@ -391,7 +586,7 @@ class ScannerCornerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // To-Left
+    // Top-Left
     canvas.drawPath(
       Path()
         ..moveTo(0, cornerLength)

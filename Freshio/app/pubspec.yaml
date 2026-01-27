@@ -28,6 +28,18 @@ dependencies:
   # For requesting camera permissions from the user
   permission_handler: ^11.3.0 
 
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  path_provider: ^2.1.1
+
+  # Firebase Packages
+  firebase_core: ^2.24.2
+  firebase_storage: ^11.6.0
+  cloud_firestore: ^4.14.0
+
+  # Network monitoring
+  connectivity_plus: ^6.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -46,4 +58,4 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/freshio_icon.png"
-  min_sdk_android: 21
+  min_sdk_android: 21  

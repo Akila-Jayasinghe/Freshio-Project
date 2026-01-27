@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "306179869111",
+    "project_id": "freshio-9fae2",
+    "storage_bucket": "freshio-9fae2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306179869111:android:b714be84adb09d0448c032",
+        "android_client_info": {
+          "package_name": "com.dip.freshio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8s6okVDjCGgJR03KJ5nRXIr83_97Yo4w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
