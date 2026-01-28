@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/widgets.dart';
 
 // ignore: depend_on_referenced_packages
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // Import dotenv
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../db_service.dart';
 
 class SyncService {
@@ -17,7 +18,7 @@ class SyncService {
     String uploadPreset = dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
 
     if (cloudName.isEmpty || uploadPreset.isEmpty) {
-      print("⚠️ WARNING: Cloudinary keys not found in .env");
+      debugPrint("⚠️ WARNING: Cloudinary keys not found in .env");
     }
 
     _cloudinary = CloudinaryPublic(cloudName, uploadPreset, cache: false);
@@ -25,12 +26,12 @@ class SyncService {
 
   Future<String> runFullSync() async {
     StringBuffer statusLog = StringBuffer();
-    print("🔄 SYNC STARTED: Checking for pending data...");
+    debugPrint("🔄 SYNC STARTED: Checking for pending data...");
 
     try {
       await _uploadPendingData(statusLog);
 
-      print("🔄 SYNC STEP 2: Checking for model updates...");
+      debugPrint("🔄 SYNC STEP 2: Checking for model updates...");
       bool modelUpdated = await _checkForNewModel();
 
       if (modelUpdated) {
@@ -39,11 +40,11 @@ class SyncService {
         statusLog.writeln("🛡️ AI Security: Model is current.");
       }
     } catch (e) {
-      print("❌ CRITICAL SYNC ERROR: $e");
+      debugPrint("❌ CRITICAL SYNC ERROR: $e");
       return "Sync Failed: ${e.toString()}";
     }
 
-    print("✅ SYNC COMPLETED.");
+    debugPrint("✅ SYNC COMPLETED.");
     return statusLog.toString();
   }
 
@@ -52,27 +53,27 @@ class SyncService {
         .getUnsyncedInspections();
 
     if (pendingRecords.isEmpty) {
-      print("ℹ️ No pending records found.");
+      debugPrint("ℹ️ No pending records found.");
       statusLog.writeln("☁️ Data is up to date.");
       return;
     }
 
-    print("🚀 Found ${pendingRecords.length} records to upload.");
+    debugPrint("🚀 Found ${pendingRecords.length} records to upload.");
     int successCount = 0;
     int failureCount = 0;
 
     for (var record in pendingRecords) {
       try {
-        print("   -> Processing Record ID: ${record['id']}...");
+        debugPrint("   -> Processing Record ID: ${record['id']}...");
         File imageFile = File(record['image_path']);
 
         if (!imageFile.existsSync()) {
-          print("   ⚠️ File missing. Marking as synced to skip.");
+          debugPrint("   ⚠️ File missing. Marking as synced to skip.");
           await _dbService.markAsSynced(record['id']);
           continue;
         }
 
-        print("   -> Uploading to Cloudinary...");
+        debugPrint("   -> Uploading to Cloudinary...");
 
         CloudinaryResponse response = await _cloudinary
             .uploadFile(
@@ -87,9 +88,9 @@ class SyncService {
             );
 
         String downloadUrl = response.secureUrl;
-        print("   -> Uploaded! URL: $downloadUrl");
+        debugPrint("   -> Uploaded! URL: $downloadUrl");
 
-        print("   -> Saving metadata to Firestore...");
+        debugPrint("   -> Saving metadata to Firestore...");
         await _firestore
             .collection('reports')
             .add({
@@ -112,17 +113,19 @@ class SyncService {
         }
 
         successCount++;
-        print("   ✅ Record ${record['id']} synced.");
+        debugPrint("   ✅ Record ${record['id']} synced.");
       } catch (e) {
         failureCount++;
-        print("   ❌ Failed Record ${record['id']}: $e");
+        debugPrint("   ❌ Failed Record ${record['id']}: $e");
       }
     }
 
-    if (successCount > 0)
+    if (successCount > 0) {
       statusLog.writeln("✅ Uploaded $successCount reports.");
-    if (failureCount > 0)
+    }
+    if (failureCount > 0) {
       statusLog.writeln("⚠️ Failed to upload $failureCount items.");
+    }
   }
 
   Future<bool> _checkForNewModel() async {

@@ -4,6 +4,7 @@ import 'dart:ui'; // ImageFilter
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:connectivity_plus/connectivity_plus.dart'; // Network monitoring
+import 'package:flutter/services.dart'; // Required for SystemNavigator
 import 'main.dart'; // Access the 'cameras' global variable
 import 'ml_service.dart';
 import 'services/sync_service.dart'; // The Sync Service
@@ -319,6 +320,13 @@ class _CameraScreenState extends State<CameraScreen> {
 
     final double scanAreaSize = MediaQuery.of(context).size.width * 0.75;
 
+    // Calculate the Aspect Ratio Scaling
+    final size = MediaQuery.of(context).size;
+    var scale = size.aspectRatio * _controller!.value.aspectRatio;
+
+    // to prevent scaling down, invert the value
+    if (scale < 1) scale = 1 / scale;
+
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
@@ -339,10 +347,16 @@ class _CameraScreenState extends State<CameraScreen> {
             Icons.arrow_back_ios_new_rounded,
             color: Colors.white,
           ),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // Check if there is a screen behind this one
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop(); // Go back
+            } else {
+              SystemNavigator.pop(); // Close the App (Exit)
+            }
+          },
         ),
         actions: [
-          // THE PERMANENT SYNC BUTTON
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: _isSyncing
@@ -374,8 +388,11 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
       body: Stack(
         children: [
-          // Full Screen Camera Preview
-          SizedBox.expand(child: CameraPreview(_controller!)),
+          // Apply Transform.scale instead of SizedBox.expand
+          Transform.scale(
+            scale: scale,
+            child: Center(child: CameraPreview(_controller!)),
+          ),
 
           // Dark Overlay with Transparent Center
           ColorFiltered(

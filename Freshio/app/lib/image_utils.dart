@@ -4,19 +4,37 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 
 class ImageUtils {
-  /// Resizes the image to 224x224
+  // Processes the image exactly like the ML model:
+  // Center Crops to a square (preserves aspect ratio) -> Resizes to 224x224
   static Future<String> saveOptimizedImage(File rawFile) async {
-    final bytes = await rawFile.readAsBytes(); // Read the image
-
-    final rawImage = img.decodeImage(bytes); // Decode image
+    final bytes = await rawFile.readAsBytes();
+    final rawImage = img.decodeImage(bytes);
 
     if (rawImage == null) throw Exception("Could not decode image");
 
-    final resizedImage = img.copyResize(
+    // CENTER CROP
+    int cropSize = rawImage.width < rawImage.height
+        ? rawImage.width
+        : rawImage.height;
+
+    int offsetX = (rawImage.width - cropSize) ~/ 2;
+    int offsetY = (rawImage.height - cropSize) ~/ 2;
+
+    final croppedImage = img.copyCrop(
       rawImage,
+      x: offsetX,
+      y: offsetY,
+      width: cropSize,
+      height: cropSize,
+    );
+
+    // resize 224x224
+    final resizedImage = img.copyResize(
+      croppedImage,
       width: 224,
       height: 224,
-      interpolation: img.Interpolation.cubic,
+      interpolation:
+          img.Interpolation.linear, // Linear is faster/standard for ML
     );
 
     final directory = await getApplicationDocumentsDirectory();

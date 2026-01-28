@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:firebase_core/firebase_core.dart';
+// ignore: depend_on_referenced_packages
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'camera_screen.dart';
 
@@ -14,19 +15,19 @@ Future<void> main() async {
   // Load the .env file
   await dotenv.load(fileName: ".env");
 
-  // 2. Initialize Firebase
+  // Initialize Firebase
   try {
     await Firebase.initializeApp();
-    print("🔥 Firebase Initialized Successfully!");
+    debugPrint("🔥 Firebase Initialized Successfully!");
   } catch (e) {
-    print("❌ Firebase Initialization Failed: $e");
+    debugPrint("❌ Firebase Initialization Failed: $e");
   }
 
   // Get the list of available cameras on the device
   try {
     cameras = await availableCameras();
   } on CameraException catch (e) {
-    print('Error fetching cameras: $e');
+    debugPrint('Error fetching cameras: $e');
   }
 
   // Run the App
@@ -40,12 +41,12 @@ class FreshioApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Freshio',
-      debugShowCheckedModeBanner: false, // Hides debug banner
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: const CameraScreen(), // Set CameraScreen as the start page
+      home: const CameraScreen(),
     );
   }
 }
