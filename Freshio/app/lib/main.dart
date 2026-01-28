@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:firebase_core/firebase_core.dart'; // 1. Import Firebase Core
+import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'camera_screen.dart';
 
 // Global variable to hold available cameras
@@ -9,6 +10,9 @@ List<CameraDescription> cameras = [];
 Future<void> main() async {
   // Ensure that widget binding is initialized before using plugins
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load the .env file
+  await dotenv.load(fileName: ".env");
 
   // 2. Initialize Firebase
   try {

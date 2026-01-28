@@ -1,4 +1,4 @@
-import 'dart:async'; // For StreamSubscription
+import 'dart:async'; // StreamSubscription
 import 'dart:io'; // File handling
 import 'dart:ui'; // ImageFilter
 import 'package:flutter/material.dart';
@@ -8,6 +8,7 @@ import 'main.dart'; // Access the 'cameras' global variable
 import 'ml_service.dart';
 import 'services/sync_service.dart'; // The Sync Service
 import 'widgets/feedback_sheet.dart'; // Feedback widget
+import '../utils/toast_utils.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -22,7 +23,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isLoading = false;
   final MLService _mlService = MLService();
 
-  // --- Sync Variables ---
+  // Sync Variables
   bool _isSyncing = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
@@ -36,58 +37,46 @@ class _CameraScreenState extends State<CameraScreen> {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
       List<ConnectivityResult> results,
     ) {
-      // Check if any of the results indicate a connection (mobile or wifi)
+      // Check if any of the results indicate a connection
       bool isConnected = results.any(
         (result) =>
             result == ConnectivityResult.mobile ||
             result == ConnectivityResult.wifi,
       );
 
-      if (isConnected) {
-        _performFullSync(
-          silent: true,
-        ); // 'silent' means don't show big popups, just do it
+      // Only sync if we are not already syncing
+      if (isConnected && !_isSyncing) {
+        _performFullSync(silent: true);
       }
     });
   }
 
   // The Unified Sync Logic (Upload Data + Check for Updates)
   Future<void> _performFullSync({bool silent = false}) async {
-    if (_isSyncing) return; // Don't run twice
+    if (_isSyncing) return;
 
     setState(() => _isSyncing = true);
 
-    // Only show "Starting..." snackbar if manually triggered
     if (!silent && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Checking for updates & uploading data..."),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      ToastUtils.showInfo(context, "Syncing data & checking updates...");
     }
 
     try {
       // Run the Bi-Directional Sync Service
       String resultMessage = await SyncService().runFullSync();
 
-      if (mounted) {
-        // Always show the final result so user knows the app is active/smart
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(resultMessage),
-            backgroundColor: Colors.green[700],
-            duration: const Duration(seconds: 4),
-          ),
-        );
+      bool hasChanges =
+          resultMessage.contains("Uploaded") ||
+          resultMessage.contains("updated");
+
+      if (mounted && (!silent || hasChanges)) {
+        ToastUtils.showSuccess(context, resultMessage);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Sync failed: $e"),
-            backgroundColor: Colors.red,
-          ),
+        ToastUtils.showError(
+          context,
+          "Sync failed. Check internet connection.",
         );
       }
     } finally {
@@ -98,9 +87,9 @@ class _CameraScreenState extends State<CameraScreen> {
   // Manual Trigger Button Logic
   Future<void> _manualSyncTrigger() async {
     // Check current connection status
-    var connectivityResult = await (Connectivity().checkConnectivity());
+    var connectivityResult = await Connectivity().checkConnectivity();
 
-    // Check if connected (support for new list-based return type)
+    // Check if connected
     bool isConnected = connectivityResult.any(
       (result) =>
           result == ConnectivityResult.mobile ||
@@ -108,22 +97,10 @@ class _CameraScreenState extends State<CameraScreen> {
     );
 
     if (!isConnected) {
-      // Offline? Ask user to connect.
       if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("No Internet Connection"),
-          content: const Text(
-            "To sync data and check for new AI models, please turn on WiFi or Mobile Data.",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
+      ToastUtils.showWarning(
+        context,
+        "No Internet. Connect to WiFi or Data to sync.",
       );
     } else {
       // Online? Run the sync visibly.
@@ -156,9 +133,12 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
-    _mlService.dispose();
+    // Stop listening to internet changes
     _connectivitySubscription?.cancel();
+    // Dispose ML Service
+    _mlService.dispose();
+    // Dispose Camera Controller
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -362,7 +342,7 @@ class _CameraScreenState extends State<CameraScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          // --- THE PERMANENT SYNC BUTTON ---
+          // THE PERMANENT SYNC BUTTON
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: _isSyncing

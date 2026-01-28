@@ -1,22 +1,35 @@
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// ignore: depend_on_referenced_packages
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Import dotenv
 import '../db_service.dart';
 
 class SyncService {
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  late final CloudinaryPublic _cloudinary;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DBService _dbService = DBService();
+
+  SyncService() {
+    // Read from .env
+    String cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+    String uploadPreset = dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
+
+    if (cloudName.isEmpty || uploadPreset.isEmpty) {
+      print("⚠️ WARNING: Cloudinary keys not found in .env");
+    }
+
+    _cloudinary = CloudinaryPublic(cloudName, uploadPreset, cache: false);
+  }
 
   Future<String> runFullSync() async {
     StringBuffer statusLog = StringBuffer();
     print("🔄 SYNC STARTED: Checking for pending data...");
 
     try {
-      // --- STEP 1: Upload Data ---
-      await _uploadPendingData(statusLog); // Pass the logger to the function
+      await _uploadPendingData(statusLog);
 
-      // --- STEP 2: Check for Model Updates ---
       print("🔄 SYNC STEP 2: Checking for model updates...");
       bool modelUpdated = await _checkForNewModel();
 
@@ -34,7 +47,6 @@ class SyncService {
     return statusLog.toString();
   }
 
-  /// Internal: Uploads pending images with TIMEOUT protection
   Future<void> _uploadPendingData(StringBuffer statusLog) async {
     List<Map<String, dynamic>> pendingRecords = await _dbService
         .getUnsyncedInspections();
@@ -60,20 +72,24 @@ class SyncService {
           continue;
         }
 
-        String fileName = imageFile.path.split('/').last;
+        print("   -> Uploading to Cloudinary...");
 
-        // 1. Upload Image (15s Timeout)
-        Reference ref = _storage.ref().child('user_feedback/$fileName');
-        await ref
-            .putFile(imageFile)
+        CloudinaryResponse response = await _cloudinary
+            .uploadFile(
+              CloudinaryFile.fromFile(
+                imageFile.path,
+                resourceType: CloudinaryResourceType.Image,
+              ),
+            )
             .timeout(
-              const Duration(seconds: 15),
-              onTimeout: () => throw "Upload timed out (Slow Internet)",
+              const Duration(seconds: 30),
+              onTimeout: () => throw "Cloudinary Upload Timed Out",
             );
 
-        String downloadUrl = await ref.getDownloadURL();
+        String downloadUrl = response.secureUrl;
+        print("   -> Uploaded! URL: $downloadUrl");
 
-        // 2. Upload Data (10s Timeout)
+        print("   -> Saving metadata to Firestore...");
         await _firestore
             .collection('reports')
             .add({
@@ -90,7 +106,6 @@ class SyncService {
               onTimeout: () => throw "Firestore write timed out",
             );
 
-        // 3. Mark Synced & Delete Local
         await _dbService.markAsSynced(record['id']);
         if (await imageFile.exists()) {
           await imageFile.delete();
@@ -104,15 +119,10 @@ class SyncService {
       }
     }
 
-    // --- REPORTING RESULTS ---
-    if (successCount > 0) {
+    if (successCount > 0)
       statusLog.writeln("✅ Uploaded $successCount reports.");
-    }
-    if (failureCount > 0) {
-      statusLog.writeln(
-        "⚠️ Failed to upload $failureCount items. Check connection.",
-      );
-    }
+    if (failureCount > 0)
+      statusLog.writeln("⚠️ Failed to upload $failureCount items.");
   }
 
   Future<bool> _checkForNewModel() async {

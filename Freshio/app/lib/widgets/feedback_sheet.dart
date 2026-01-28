@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart'; // Import Connectivity
+import '../services/sync_service.dart'; // Import Sync Service
 import '../db_service.dart';
 import '../image_utils.dart';
+import '../utils/toast_utils.dart';
 
 class FeedbackSheet extends StatefulWidget {
   final File imageFile;
@@ -36,35 +39,51 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
     super.dispose();
   }
 
-  // Logic to save data to SQLite
+  // Logic to save data to SQLite AND Auto-Upload (With Redundancy Check)
   Future<void> _submitFeedback() async {
-    // Only validate the text field if it's visible (i.e., it IS a fruit)
+    // Validate Form (Only if it's a valid object)
     if (!_isInvalidObject && !_formKey.currentState!.validate()) return;
+
+    // Prepare Data Values
+    String finalName;
+    String finalQuality;
+
+    if (_isInvalidObject) {
+      finalName = "Non-Fruit";
+      finalQuality = "N/A";
+    } else {
+      finalName = _nameController.text.trim();
+      finalQuality = _selectedQuality;
+    }
+
+    // REDUNDANCY CHECK
+    String normalizedAI = widget.aiResult.toLowerCase();
+    String normalizedUserQuality = finalQuality.toLowerCase();
+    String normalizedUserName = finalName.toLowerCase();
+
+    // Check match
+    bool qualityMatches = normalizedAI.contains(normalizedUserQuality);
+    bool nameMatches = normalizedAI.contains(normalizedUserName);
+
+    // If both match, it's redundant.
+    if (qualityMatches && nameMatches) {
+      if (mounted) {
+        ToastUtils.showSuccess(context, "AI was correct! No report needed. ✅");
+        Navigator.pop(context);
+      }
+      return;
+    }
 
     setState(() => _isSaving = true);
 
     try {
-      // Resize the image
+      // Resize the image (Only done if feedback is actually useful)
       final String optimizedPath = await ImageUtils.saveOptimizedImage(
         widget.imageFile,
       );
       print("✅ Image successfully saved at: $optimizedPath");
 
-      // Determine values based on the toggle
-      String finalName;
-      String finalQuality;
-
-      if (_isInvalidObject) {
-        // If user says it's not a fruit, we label it as "Non-Fruit" / "N/A"
-        finalName = "Non-Fruit";
-        finalQuality = "N/A";
-      } else {
-        // Otherwise, use their input
-        finalName = _nameController.text.trim();
-        finalQuality = _selectedQuality;
-      }
-
-      // Save metadata to SQLite Database
+      // Save metadata to Local SQLite Database
       await DBService().insertInspection(
         imagePath: optimizedPath,
         aiResult: widget.aiResult,
@@ -73,21 +92,33 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
         confidence: widget.confidence,
       );
 
-      // Close the sheet
+      // Proactive Sync
+      var connectivityResult = await Connectivity().checkConnectivity();
+      bool isOnline = connectivityResult.any(
+        (result) =>
+            result == ConnectivityResult.mobile ||
+            result == ConnectivityResult.wifi,
+      );
+
+      if (isOnline) {
+        // Fire and forget upload
+        SyncService().runFullSync();
+      }
+
+      // Close the sheet & Show Message
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thanks! Feedback saved for future training.'),
-          ),
-        );
+
+        if (isOnline) {
+          ToastUtils.showSuccess(context, "Feedback sent to cloud! 🚀");
+        } else {
+          ToastUtils.showWarning(context, "Saved offline. Syncing later.");
+        }
       }
     } catch (e) {
       print("❌ Error saving feedback: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving feedback: $e')));
+        ToastUtils.showError(context, "Error saving feedback.");
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
