@@ -50,7 +50,7 @@ class ToastUtils {
   }
 }
 
-// --- The Stack Manager Widget ---
+// The Stack Manager Widget
 class ToastStack extends StatefulWidget {
   const ToastStack({super.key});
 
@@ -104,7 +104,7 @@ class _ToastStackState extends State<ToastStack> {
   }
 }
 
-// --- Data Model ---
+// Data Model
 class _ToastModel {
   final String id;
   final String message;
@@ -119,7 +119,7 @@ class _ToastModel {
   });
 }
 
-// --- Individual Animated Toast Widget ---
+// Individual Animated Toast Widget
 class _ToastWidget extends StatefulWidget {
   final _ToastModel model;
 
@@ -130,7 +130,7 @@ class _ToastWidget extends StatefulWidget {
 }
 
 class _ToastWidgetState extends State<_ToastWidget>
-    with SingleTickerProviderStateMixin {
+  with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacity;
   late Animation<Offset> _offset;

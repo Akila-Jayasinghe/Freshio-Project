@@ -30,7 +30,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
   String _selectedQuality = 'Fresh';
   bool _isSaving = false;
 
-  // New Toggle: Is this actually a fruit?
+  // Toggle: Is this actually a fruit?
   bool _isInvalidObject = false;
 
   @override
@@ -81,7 +81,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
       final String optimizedPath = await ImageUtils.saveOptimizedImage(
         widget.imageFile,
       );
-      print("✅ Image successfully saved at: $optimizedPath");
+      debugPrint("✅ Image successfully saved at: $optimizedPath");
 
       // Save metadata to Local SQLite Database
       await DBService().insertInspection(
@@ -107,16 +107,15 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
 
       // Close the sheet & Show Message
       if (mounted) {
-        Navigator.pop(context);
-
         if (isOnline) {
           ToastUtils.showSuccess(context, "Feedback sent to cloud! 🚀");
         } else {
           ToastUtils.showWarning(context, "Saved offline. Syncing later.");
         }
+        Navigator.pop(context);
       }
     } catch (e) {
-      print("❌ Error saving feedback: $e");
+      debugPrint("❌ Error saving feedback: $e");
       if (mounted) {
         ToastUtils.showError(context, "Error saving feedback.");
       }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 
@@ -23,9 +24,9 @@ class MLService {
       _interpreter = await Interpreter.fromAsset(
         'assets/model/Freshio_model_v02.tflite',
       );
-      print('✅ Freshio model loaded successfully!');
+      debugPrint('✅ Freshio model loaded successfully!');
     } catch (e) {
-      print('❌ Failed to load model: $e');
+      debugPrint('❌ Failed to load model: $e');
     }
   }
 
