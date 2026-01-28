@@ -1,4 +1,4 @@
-package com.example.app
+package com.dip.freshio
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'camera_screen.dart';
 
 // Global variable to hold available cameras
@@ -8,6 +10,17 @@ List<CameraDescription> cameras = [];
 Future<void> main() async {
   // Ensure that widget binding is initialized before using plugins
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load the .env file
+  await dotenv.load(fileName: ".env");
+
+  // 2. Initialize Firebase
+  try {
+    await Firebase.initializeApp();
+    print("🔥 Firebase Initialized Successfully!");
+  } catch (e) {
+    print("❌ Firebase Initialization Failed: $e");
+  }
 
   // Get the list of available cameras on the device
   try {
@@ -27,7 +40,7 @@ class FreshioApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Freshio',
-      debugShowCheckedModeBanner: false, // Hides-debug banner
+      debugShowCheckedModeBanner: false, // Hides debug banner
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
